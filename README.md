@@ -75,7 +75,8 @@ CloudTrack lets users sign up, manage tasks and expenses, upload receipt images,
 - Amazon DynamoDB (NoSQL, on-demand capacity)
 
 **Auth**
-- Amazon Cognito (User Pools, email verification, JWT tokens)
+- Amazon Cognito User Pools (signup, email verification, JWT tokens)
+- Amazon Cognito Identity Pools (temporary AWS credentials for direct browser-to-S3 uploads)
 
 **Event-Driven Processing**
 - S3 (receipt uploads) → SQS (queue) → Lambda (processing) → SNS (email notification)
@@ -95,7 +96,8 @@ CloudTrack lets users sign up, manage tasks and expenses, upload receipt images,
 - Email/password signup with verification code flow (Cognito)
 - JWT-secured REST API — no unauthenticated access to user data
 - Full CRUD for tasks and expenses, scoped per authenticated user
-- Receipt image upload triggers an async processing pipeline
+- In-app receipt upload: users upload directly from the browser to S3 using temporary, per-user AWS credentials issued via a Cognito Identity Pool (no file ever passes through a backend server)
+- Receipt upload triggers an async processing pipeline (S3 → SQS → Lambda → SNS)
 - Email notification on receipt upload and on daily task/expense summary
 - Real-time dashboard of system health (invocations, errors, capacity, API errors)
 - Automated alerting on Lambda error spikes
@@ -108,6 +110,9 @@ This project was built and debugged end-to-end, including resolving real product
 - JWT authorizer configuration (issuer/audience validation) against Cognito
 - Duplicate header bugs in API testing tools
 - S3 → SQS event notification permissions (resource-based policies)
+- Configuring Cognito Identity Pools to exchange a User Pool JWT for temporary, scoped AWS credentials
+- Browser-side S3 SDK quirks (converting File objects to ArrayBuffer to avoid stream-reader incompatibilities)
+- S3 bucket CORS configuration required for direct browser-to-S3 PUT requests
 
 ## Project Structure
 
@@ -116,8 +121,8 @@ cloudtrack-frontend/
 ├── src/
 │   ├── App.jsx          # Auth state routing
 │   ├── Auth.jsx          # Signup/Login/Email verification
-│   ├── Dashboard.jsx     # CRUD UI for tasks & expenses
-│   ├── aws-config.js     # Cognito + API config
+│   ├── Dashboard.jsx     # CRUD UI + direct S3 receipt upload
+│   ├── aws-config.js     # Cognito (User Pool + Identity Pool) + API config
 │   └── main.jsx          # Amplify initialization
 ├── dist/                 # Production build (deployed to S3)
 └── package.json
